@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  # Аналитический сервис
+  analytics:
+    build:
+      context: ./ecosphere-ai-analytics
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/green_platform
+    depends_on:
+      - db
+
+  # Веб-интерфейс
+  web:
+    build:
+      context: ./ecosphere-ai-web/green-space
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - ANALYTICS_API_URL=http://analytics:8000
+      - CHATBOT_API_URL=http://chatbot:5000
+
+  # Чат-бот сервис
+  chatbot:
+    build:
+      context: ./ecosphere-ai-bot
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"
+    environment:
+      - ANALYTICS_API_URL=http://analytics:8000
+
+  # База данных
+  db:
+    image: postgres:13
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=green_platform
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  # API Gateway
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - analytics
+      - web
+      - chatbot
+
+volumes:
+  postgres_data:
